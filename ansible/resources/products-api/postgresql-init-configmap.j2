@@ -1,0 +1,105 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ postgresql_init_configmap }}
+data:
+  create_products_database.sh: >-
+    #! /bin/bash
+
+
+    export PGPASSWORD=$POSTGRESQL_PASSWORD
+
+
+    SCRIPT_DIR=''
+
+    pushd "$(dirname "$(readlink -f "$BASH_SOURCE")")" > /dev/null && {
+        SCRIPT_DIR="$PWD"
+        popd > /dev/null
+    }   
+
+
+    echo "creating products database"
+
+
+    psql -h $POSTGRESQL_SERVICE -d $POSTGRESQL_DATABASE -U $POSTGRESQL_USER -w
+    -c "grant all privileges on database ${POSTGRESQL_DATABASE} to
+    ${POSTGRESQL_USER};"
+
+    psql -h $POSTGRESQL_SERVICE -d $POSTGRESQL_DATABASE -U $POSTGRESQL_USER -w <
+    ${SCRIPT_DIR}/products_ddl.sql
+  
+  products_ddl.sql: >+
+
+    SET statement_timeout = 0;
+
+    SET lock_timeout = 0;
+
+    SET idle_in_transaction_session_timeout = 0;
+
+    SET client_encoding = 'UTF8';
+
+    SET standard_conforming_strings = on;
+
+    SELECT pg_catalog.set_config('search_path', '', false);
+
+    SET check_function_bodies = false;
+
+    SET client_min_messages = warning;
+
+    SET row_security = off;
+
+    SET default_tablespace = '';
+
+    SET default_with_oids = false;
+
+    CREATE TABLE public.products ( 
+        productname text,
+        productprice numeric(10,2), 
+        productid bigint NOT NULL 
+    );
+
+    CREATE SEQUENCE public.products_seq 
+        START WITH 1
+        INCREMENT BY 10
+        NO MINVALUE
+        NO MAXVALUE
+        CACHE 1;
+    ;
+  
+    ALTER SEQUENCE public.products_seq OWNED BY public.products.productid;
+
+    ALTER TABLE ONLY public.products ALTER COLUMN productid SET DEFAULT nextval('public.products_seq'::regclass);
+
+    ALTER TABLE ONLY public.products ADD CONSTRAINT products_pkey PRIMARY KEY (productid);
+
+    INSERT INTO public.products (productname, productprice)
+        VALUES 
+            ('Ninja Blender',320),
+            ('Ninja Blender Pro', 515), 
+            ('Kitchenhelp Juicer',149.99), 
+            ('ArtCuisine Toaster', 79.99), 
+            ('White and Decor Toaster Oven', 49.99),
+            ('Mexpresso Maker', 199.99), 
+            ('Mini Fridge', 229.99), 
+            ('Slow-Cooker Pot', 44.99),
+            ('SungSamn 4-Door Refrigerator',2199.99),
+            ('Hanilton 12 Cup Food Processor',49.99)
+    ;
+
+  wait_for_postgresql.sh: |-
+    #!/bin/sh
+
+    # wait-for-postgres.sh
+    set -e
+    cmd="$@"
+    timer="5"
+    echo "Path is: $PATH"
+    echo "When postgres is available, we will run this command: $cmd"
+    echo "Waiting for PostgreSQL at: $POSTGRESQL_SERVICE"
+    until pg_isready -h $POSTGRESQL_SERVICE 2>/dev/null; do
+      echo "Postgres is unavailable - sleeping for $timer seconds"
+      sleep $timer
+    done
+    echo "Postgres is up - executing command"
+    exec $cmd

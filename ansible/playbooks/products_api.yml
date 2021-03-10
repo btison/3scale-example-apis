@@ -1,0 +1,26 @@
+---
+
+- name: Deploy Products API
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  run_once: true
+  vars_files:
+    - group_vars/products_api.yml
+
+  tasks:
+    - set_fact:
+        work_dir_name: products-api
+    - include_role:
+        name: ../roles/products_api
+      when: >
+        ACTION is not defined or
+        ACTION is none or
+        ACTION|trim() == "" or
+        ACTION|trim() == "install"
+    - include_role:
+        name: ../roles/products_api
+        tasks_from: uninstall
+      when: >
+        ACTION is defined and
+        ACTION|trim() == "uninstall"

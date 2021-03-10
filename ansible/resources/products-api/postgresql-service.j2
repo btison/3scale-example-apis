@@ -1,0 +1,15 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ postgresql_service }}
+spec:
+  ports:
+  - name: postgresql
+    protocol: TCP
+    port: 5432
+    targetPort: 5432
+  selector:
+    name: {{ postgresql_deployment }}
+  type: ClusterIP
+  sessionAffinity: None

@@ -1,0 +1,18 @@
+---
+
+- name: "create {{ namespace }} namespace"
+  k8s:
+    state: present
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "templates/namespace.j2"
+
+- name: "give user {{ ocp_username }} admin privileges in namespace"
+  k8s:
+    state: present
+    namespace: "{{ namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "templates/namespace-admin-rb.j2"
+  when:
+    ocp_user_namespace_admin is defined and ocp_user_namespace_admin|bool == true

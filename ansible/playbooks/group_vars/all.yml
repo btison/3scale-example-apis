@@ -1,0 +1,4 @@
+---
+
+# resources dir
+resources_dir: "{{ playbook_dir }}/../resources"

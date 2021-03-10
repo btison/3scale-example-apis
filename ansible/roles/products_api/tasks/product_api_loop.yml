@@ -1,0 +1,151 @@
+---
+
+- set_fact:
+    ocp_user: "{{ user_base_name }}{{ item }}"
+
+- name: "create namespace for the products api"
+  import_role:
+    name: openshift_namespace
+  vars:
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    namespace_description: ""
+    namespace_display_name: ""
+    ocp_username: "{{ ocp_user }}"
+    ocp_user_namespace_admin: true
+
+- name: "create application service account"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/application-sa.j2"
+    service_account: "{{ products_api_service_account }}"
+
+- name: "create PostgreSQL secret"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/postgresql-secret.j2"
+    postgresql_secret: "{{ products_api_postgresql_secret }}"
+    postgresql_username: "{{ products_api_postgresql_username }}"
+    postgresql_password: "{{ products_api_postgresql_password }}"
+    postgresql_database: "{{ products_api_postgresql_database }}"
+
+- name: "create PostgreSQL service"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/postgresql-service.j2"
+    postgresql_service: "{{ products_api_postgresql_service }}"
+    postgresql_deployment: "{{ products_api_postgresql_deployment }}"
+
+- name: "create PostgreSQL init configmap"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/postgresql-init-configmap.j2"
+    postgresql_init_configmap: "{{ products_api_postgresql_init_configmap }}"
+
+- name: "create PostgreSQL deploymentconfig"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/postgresql-dc.j2"
+    service_account: "{{ products_api_service_account }}"
+    postgresql_deployment: "{{ products_api_postgresql_deployment }}"
+    postgresql_cpu_request: "{{ products_api_postgresql_cpu_request }}"
+    postgresql_memory_request: "{{ products_api_postgresql_memory_request }}"
+    postgresql_cpu_limit: "{{ products_api_postgresql_cpu_limit }}"
+    postgresql_memory_limit: "{{ products_api_postgresql_memory_limit }}"
+    postgresql_secret: "{{ products_api_postgresql_secret }}"
+    postgresql_service: "{{ products_api_postgresql_service }}"
+    postgresql_max_prepared_transactions: "{{ products_api_postgresql_max_prepared_transactions }}"
+    postgresql_max_connections: "{{ products_api_postgresql_max_connections }}"
+    postgresql_init_configmap: "{{ products_api_postgresql_init_configmap }}"
+    postgresql_image: "{{ products_api_postgresql_image }}"
+
+- name: "wait until PostgreSQL is up and running"
+  k8s_info:
+    api_version: apps.openshift.io/v1
+    kind: deploymentconfig
+    name: "{{ products_api_postgresql_deployment }}"
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+  register: r_postgresql_dc
+  retries: 30
+  delay: 10
+  changed_when: false
+  until:
+    - r_postgresql_dc.resources is defined
+    - r_postgresql_dc.resources | length | int > 0
+    - r_postgresql_dc.resources[0].status.readyReplicas is defined
+    - r_postgresql_dc.resources[0].status.replicas is defined
+    - r_postgresql_dc.resources[0].status.readyReplicas == r_postgresql_dc.resources[0].status.replicas
+
+- name: "create application configmap"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/application-configmap.j2"
+    application_configmap: "{{ products_api_application_configmap }}"
+    postgresql_username: "{{ products_api_postgresql_username }}"
+    postgresql_password: "{{ products_api_postgresql_password }}"
+    postgresql_database: "{{ products_api_postgresql_database }}"
+    postgresql_service: "{{ products_api_postgresql_service }}"
+    postgresql_namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+
+- name: "create application imagestream"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/application-is.j2"
+    application_imagestream: "{{ products_api_application_imagestream }}"
+    application_image: "{{ products_api_application_image }}"
+
+- name: "create application deploymentconfig"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/application-dc.j2"
+    application_name: "{{ products_api_application_name }}"
+    resources_limits_cpu: "{{ products_api_resources_limits_cpu }}"
+    resources_limits_memory: "{{ products_api_resources_limits_memory }}"
+    resources_requests_cpu: "{{ products_api_resources_requests_cpu }}"
+    resources_requests_memory: "{{ products_api_resources_requests_memory }}"
+    service_account: "{{ products_api_service_account }}"
+    application_configmap: "{{ products_api_application_configmap }}"
+    application_imagestream: "{{ products_api_application_imagestream }}"
+    application_image_tag: "{{ products_api_application_image_tag }}"
+    imagestream_namespace: "{{ ocp_user }}-{{ products_api_namespace }}"    
+       
+- name: "create application service"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/application-service.j2"
+    application_name: "{{ products_api_application_name }}"
+
+- name: "create application route"
+  k8s:
+    state: present
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    definition: "{{ lookup('template', resource ) | from_yaml }}"
+  vars:
+    resource: "{{ resources_dir }}/products-api/application-route.j2"
+    application_name: "{{ products_api_application_name }}"

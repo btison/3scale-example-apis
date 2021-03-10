@@ -1,0 +1,10 @@
+[all:vars]
+
+user_base_name=user
+start_user=
+end_user=
+
+business_services_namespace=business-services
+
+products_api_application_image=quay.io/gpte3scale/products-service
+products_api_application_image_tag=latest

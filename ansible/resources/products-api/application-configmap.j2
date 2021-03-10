@@ -1,0 +1,11 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ application_configmap }}
+data:
+  application.properties: >
+    quarkus.datasource.jdbc.url=jdbc:postgresql://{{ postgresql_service }}.{{ postgresql_namespace }}.svc:5432/{{ postgresql_database }}
+
+    quarkus.datasource.username={{ postgresql_username }}
+
+    quarkus.datasource.password={{ postgresql_password }}

@@ -1,0 +1,92 @@
+---
+
+- set_fact:
+    ocp_user: "{{ user_base_name }}{{ item }}"
+
+- name: "delete application route"
+  k8s:
+    state: absent
+    api_version: route.openshift.io/v1
+    kind: route
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_application_name }}"
+
+- name: "delete application service"
+  k8s:
+    state: absent
+    api_version: v1
+    kind: service
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_application_name }}"
+
+- name: "delete application deploymentconfig"
+  k8s:
+    state: absent
+    api_version: apps.openshift.io/v1
+    kind: deploymentconfig
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_application_name }}"
+
+- name: "delete application imagestream"
+  k8s:
+    state: absent
+    api_version: image.openshift.io/v1
+    kind: imagestream
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_application_imagestream }}"
+
+- name: "delete application configmap"
+  k8s:
+    state: absent
+    api_version: v1
+    kind: configmap
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_application_configmap }}"
+
+- name: "delete PostgreSQL deploymentconfig"
+  k8s:
+    state: absent
+    api_version: apps.openshift.io/v1
+    kind: deploymentconfig
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_postgresql_deployment }}"
+
+- name: "delete PostgreSQL init configmap"
+  k8s:
+    state: absent
+    api_version: v1
+    kind: configmap
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_postgresql_init_configmap }}"
+       
+- name: "delete PostgreSQL service"
+  k8s:
+    state: absent
+    api_version: v1
+    kind: service
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_postgresql_service }}"
+       
+- name: "delete PostgreSQL secret"
+  k8s:
+    state: absent
+    api_version: v1
+    kind: secret
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_postgresql_secret }}"
+
+- name: "delete appllication service account"
+  k8s:
+    state: absent
+    api_version: v1
+    kind: serviceaccount
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+    name: "{{ products_api_service_account }}"
+
+- name: "delete namespace for the products api"
+  import_role:
+    name: openshift_namespace
+    tasks_from: uninstall
+  vars:
+    namespace: "{{ ocp_user }}-{{ products_api_namespace }}"
+  when: uninstall_delete_namespace | default(False) | bool

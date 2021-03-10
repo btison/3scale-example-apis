@@ -1,0 +1,107 @@
+---
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: {{ postgresql_deployment }}
+spec:
+  strategy:
+    recreateParams:
+      post:
+        execNewPod:
+          command: 
+            - /bin/bash
+            - /tmp/init-files/wait_for_postgresql.sh
+            - /tmp/init-files/create_products_database.sh
+          containerName: postgresql
+          volumes:
+            - init-volume
+        failurePolicy: Abort
+      timeoutSeconds: 600
+    resources: {}
+    type: Recreate
+  triggers:
+    - type: ConfigChange
+  replicas: 1
+  revisionHistoryLimit: 10
+  test: false
+  selector:
+    name: {{ postgresql_deployment }}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: {{ postgresql_deployment }}
+    spec:
+      volumes:
+        - name: productsdb-data
+          emptyDir: {}
+        - configMap:
+            defaultMode: 493
+            name: {{ postgresql_init_configmap }}
+          name: init-volume
+      containers:
+        - resources:
+            requests:
+              cpu: '{{ postgresql_cpu_request }}'
+              memory: '{{ postgresql_memory_request }}'
+            limits:
+              cpu: '{{ postgresql_cpu_limit }}'
+              memory: '{{ postgresql_memory_limit }}'
+          readinessProbe:
+            exec:
+              command:
+              - /usr/libexec/check-container
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+          livenessProbe:
+            timeoutSeconds: 10
+            initialDelaySeconds: 30
+            exec:
+              command:
+              - /usr/libexec/check-container
+              - --live
+          env:
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ postgresql_secret }}
+                  key: database-user
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ postgresql_secret }}
+                  key: database-password
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ postgresql_secret }}
+                  key: database-name
+            - name: POSTGRESQL_SERVICE
+              value: {{ postgresql_service }}
+            - name: POSTGRESQL_MAX_PREPARED_TRANSACTIONS
+              value: "{{ postgresql_max_prepared_transactions }}"
+            - name: POSTGRESQL_MAX_CONNECTIONS
+              value: "{{ postgresql_max_connections }}"          
+          terminationMessagePath: /dev/termination-log
+          name: postgresql
+          securityContext:
+            capabilities: {}
+            privileged: false
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: productsdb-data
+              mountPath: /var/lib/pgsql/data
+            - name: init-volume
+              mountPath: /tmp/init-files            
+          terminationMessagePolicy: File
+          image: {{ postgresql_image }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      serviceAccount: {{ service_account }}
+      serviceAccountName: {{ service_account }}
+      schedulerName: default-scheduler

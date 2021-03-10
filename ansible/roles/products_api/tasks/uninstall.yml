@@ -1,0 +1,6 @@
+---
+
+- name: "undeploy products api for users {{ start_user }} to {{ end_user }}"
+  include_tasks: 
+    file: product_api_loop_uninstall.yml
+  loop: "{{ range(start_user, end_user|int + 1, 1)|list }}"

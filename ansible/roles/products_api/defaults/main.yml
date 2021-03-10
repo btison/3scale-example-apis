@@ -1,0 +1,32 @@
+---
+
+products_api_namespace: "{{ business_services_namespace }}"
+
+products_api_service_account: products-service
+
+products_api_postgresql_secret: products-db
+products_api_postgresql_username: admin
+products_api_postgresql_password: password
+products_api_postgresql_database: coolstore
+
+products_api_postgresql_service: products-db
+products_api_postgresql_deployment: products-db
+products_api_postgresql_init_configmap: products-db-init
+products_api_postgresql_cpu_request: 100m
+products_api_postgresql_memory_request: 256Mi
+products_api_postgresql_cpu_limit: 500m
+products_api_postgresql_memory_limit: 512Mi
+products_api_postgresql_max_prepared_transactions: 100
+products_api_postgresql_max_connections: 100
+products_api_postgresql_image: registry.redhat.io/rhel8/postgresql-96:latest
+
+products_api_application_configmap: product-service
+
+products_api_application_imagestream: products-service
+
+products_api_application_name: products-service
+products_api_resources_limits_cpu: 200m
+products_api_resources_limits_memory: 250Mi
+products_api_resources_requests_cpu: 100m
+products_api_resources_requests_memory: 200Mi
+
